@@ -86,28 +86,6 @@ pid_t spawn(std::function<int(int,int)> func, int &fdr, int &fdw)
     return 0;
 }
 
-#if 0
-int client(int fdr, int fdw)
-{
-    static char buf[1024] = {0};
-    ssize_t nbytes = 0;
-    do {
-        nbytes = read(0, buf, 1024);
-        write(fdw, buf, nbytes);
-    } while (nbytes > 0);
-}
-
-int server(int fdr, int fdw)
-{
-    static char buf[1024] = {0};
-    ssize_t nbytes = 0;
-    do {
-        nbytes = read(fdr, buf, 1024);
-        write(1, buf, nbytes);
-    } while (nbytes > 0);
-}
-#endif
-
 int client(int fd_read, int fd_write)
 {
     static char buf[1024] = {0};
@@ -158,7 +136,11 @@ int client(int fd_read, int fd_write)
     ssize_t nbytes = 0;
     do {
         nbytes = read(0, buf, 1024);
-        tls_write(tls, buf, nbytes);
+        if (nbytes > 0) {
+            tls_write(tls, buf, nbytes);
+            nbytes = tls_read(tls, buf, 1024);
+            write(1, buf, nbytes);
+        }
     } while (nbytes > 0);
 
     tls_close(tls);
@@ -229,7 +211,7 @@ int server(int fd_read, int fd_write)
 
         do {
             nbytes = tls_read(tls_cctx, buf, 1024);
-            write(1, buf, nbytes);
+            tls_write(tls_cctx, buf, nbytes);
         } while (nbytes > 0);
 
         if (read < 0) {
